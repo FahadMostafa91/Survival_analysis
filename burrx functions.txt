@@ -1,0 +1,110 @@
+dburrx = function(x, theta)
+{
+  # The pdf of the BurrX(theta).
+  if (theta <= 0)
+  {
+    stop("theta must be greater than 0.")
+  }
+
+  ans = vector(mode="numeric", length=length(x))
+  for(i in 1:length(x))
+  {
+    if (x[i] < 0)
+    {
+      ans[i] = 0
+    }
+    else
+    {
+      ans[i] = 2*x[i]*theta*exp(-1*x[i]^2)*(1-exp(-1*x[i]^2))^(theta-1)
+    }
+  }
+  return(ans)
+}
+
+pburrx = function(x, theta)
+{
+  # The cdf of the BurrX(theta).
+  if (theta <= 0)
+  {
+    stop("theta must be greater than 0.")
+  }
+
+  ans = vector(mode="numeric", length=length(x))
+  for(i in 1:length(x))
+  {
+    if (x[i] < 0)
+    {
+      ans[i] = 0
+    }
+    else
+    {
+      ans[i] = (1-exp(-1*x[i]^2))^theta
+    }
+  }
+  return(ans)
+}
+
+sburrx = function(x, theta)
+{
+  # The survivor function of the BurrX(theta).
+  if (theta <= 0)
+  {
+    stop("theta must be greater than 0.")
+  }
+
+  ans = 1-pburrx(x,theta)
+  return(ans)
+}
+
+rburrx = function(n, theta)
+{
+  # Generate a random sample of n BurrX(theta).
+  if (theta <= 0)
+  {
+    stop("theta must be greater than 0.")
+  }
+  u = runif(n)
+  x = sqrt(-1*log(1-u^(1/theta)))
+  return(x)
+}
+
+burrxloglike = function(theta, t, delta)
+{
+  # The log likelihood of the BurrX.
+  if (theta < 0)
+  {
+    ans = -Inf
+  }
+  else
+  {
+    ans = sum(delta*log(dburrx(t,theta)) + (1-delta)*log(sburrx(t,theta)))
+  }
+  return(ans)
+}
+
+burrxmle = function(t, delta)
+{
+  # Find the MLE of theta for the BurrX from a (possibly) censored sample by direct maximization
+  # of the log-likelihood function using the optim function.
+
+  n = length(delta)
+  if (sum(delta)==n) # Complete sample, MLE closed form.
+  {
+    ans = -1*n/sum(log(1-exp(-t^2)))
+  }
+  else # Must be found numerically.
+  {
+    # Provide a starting value.
+    theta0 = -1*sum(delta)/sum(log(1-exp(-t^2)))
+    temp = optim(theta0,burrxloglike,method="BFGS",t=t,delta=delta,control=list(fnscale=-1))
+    if(temp$convergence==0) # Method converged
+    {
+      ans = temp$par
+    }
+    else
+    {
+      stop("Convergence not achieved.")
+    }
+  }
+  return(ans)
+}
